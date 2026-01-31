@@ -537,7 +537,7 @@ def _responses_tools_to_chat_tools(tools: Any) -> list[dict[str, Any]]:
                 function["description"] = tool["description"]
             if isinstance(tool.get("parameters"), dict):
                 function["parameters"] = tool["parameters"]
-        out.append({"type": tool_type, "function": function})
+        out.append({"type": "function", "function": function})
     return out
 
 
@@ -564,7 +564,7 @@ def _chat_tools_to_responses_tools(tools: Any) -> list[dict[str, Any]]:
             continue
         name = name.strip()
 
-        spec: dict[str, Any] = {"type": tool_type, "name": name}
+        spec: dict[str, Any] = {"type": "function", "name": name}
         if tool_type == "function":
             description = tool.get("description")
             parameters = tool.get("parameters")
