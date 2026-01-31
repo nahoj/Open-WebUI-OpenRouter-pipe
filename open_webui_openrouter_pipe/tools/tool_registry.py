@@ -10,22 +10,19 @@ Ensures collision-safe tool names and builds execution registry for dispatcher.
 
 from __future__ import annotations
 
-import functools
 import hashlib
 import logging
 from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 
-# Import ModelFamily for function calling support check
-from ..models.registry import ModelFamily
-
 # Import tool schema functions
 from .tool_schema import _strictify_schema
 from ..core.timing_logger import timed
+# Import ModelFamily for function calling support check
+from ..models.registry import ModelFamily
 
 # Import runtime dependencies
 if TYPE_CHECKING:
     from ..api.transforms import ResponsesBody
-    from ..core.config import Valves
     from ..pipe import Pipe
 else:
     # At runtime, import these to avoid circular import issues
@@ -126,18 +123,20 @@ def _normalize_responses_function_tool_spec(tool: Any, *, strictify: bool) -> Op
     """Return a normalized Responses-style function tool spec, or None when invalid."""
     if not isinstance(tool, dict):
         return None
-    if tool.get("type") != "function":
+    tool_type = tool.get("type")
+    if tool_type not in {"function", "builtin_function"}:
         return None
     name = tool.get("name")
     if not isinstance(name, str) or not name.strip():
         return None
-    spec: dict[str, Any] = {"type": "function", "name": name.strip()}
-    description = tool.get("description")
-    if isinstance(description, str) and description.strip():
-        spec["description"] = description.strip()
-    parameters = tool.get("parameters")
-    if isinstance(parameters, dict):
-        spec["parameters"] = _strictify_schema(parameters) if strictify else parameters
+    spec: dict[str, Any] = {"type": tool_type, "name": name.strip()}
+    if tool_type == "function":
+        description = tool.get("description")
+        if isinstance(description, str) and description.strip():
+            spec["description"] = description.strip()
+        parameters = tool.get("parameters")
+        if isinstance(parameters, dict):
+            spec["parameters"] = _strictify_schema(parameters) if strictify else parameters
     return spec
 
 

@@ -17,7 +17,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 if TYPE_CHECKING:
     from fastapi import Request
@@ -523,7 +523,8 @@ def _responses_tools_to_chat_tools(tools: Any) -> list[dict[str, Any]]:
     for tool in tools:
         if not isinstance(tool, dict):
             continue
-        if tool.get("type") != "function":
+        tool_type = tool.get("type")
+        if tool_type not in {"function", "builtin_function"}:
             continue
         name = tool.get("name")
         if not isinstance(name, str) or not name.strip():
@@ -531,11 +532,12 @@ def _responses_tools_to_chat_tools(tools: Any) -> list[dict[str, Any]]:
         function: dict[str, Any] = {
             "name": name,
         }
-        if isinstance(tool.get("description"), str):
-            function["description"] = tool["description"]
-        if isinstance(tool.get("parameters"), dict):
-            function["parameters"] = tool["parameters"]
-        out.append({"type": "function", "function": function})
+        if tool_type == "function":
+            if isinstance(tool.get("description"), str):
+                function["description"] = tool["description"]
+            if isinstance(tool.get("parameters"), dict):
+                function["parameters"] = tool["parameters"]
+        out.append({"type": tool_type, "function": function})
     return out
 
 
@@ -549,7 +551,8 @@ def _chat_tools_to_responses_tools(tools: Any) -> list[dict[str, Any]]:
     for tool in tools:
         if not isinstance(tool, dict):
             continue
-        if tool.get("type") != "function":
+        tool_type = tool.get("type")
+        if tool_type not in {"function", "builtin_function"}:
             continue
 
         fn = tool.get("function")
@@ -561,19 +564,19 @@ def _chat_tools_to_responses_tools(tools: Any) -> list[dict[str, Any]]:
             continue
         name = name.strip()
 
-        description = tool.get("description")
-        parameters = tool.get("parameters")
-        if isinstance(fn, dict):
-            if not isinstance(description, str):
-                description = fn.get("description")
-            if not isinstance(parameters, dict):
-                parameters = fn.get("parameters")
-
-        spec: dict[str, Any] = {"type": "function", "name": name}
-        if isinstance(description, str) and description.strip():
-            spec["description"] = description.strip()
-        if isinstance(parameters, dict):
-            spec["parameters"] = parameters
+        spec: dict[str, Any] = {"type": tool_type, "name": name}
+        if tool_type == "function":
+            description = tool.get("description")
+            parameters = tool.get("parameters")
+            if isinstance(fn, dict):
+                if not isinstance(description, str):
+                    description = fn.get("description")
+                if not isinstance(parameters, dict):
+                    parameters = fn.get("parameters")
+            if isinstance(description, str) and description.strip():
+                spec["description"] = description.strip()
+            if isinstance(parameters, dict):
+                spec["parameters"] = parameters
 
         out.append(spec)
 
